@@ -27,6 +27,9 @@ from electro_sim.ui.widgets.collapsible_card import CollapsibleCard
 from electro_sim.ui.widgets.complex_input import ComplexInput
 
 
+MAX_MANUAL_THICKNESS_NM = 1_000_000.0
+
+
 class _LayerItemWidget(QWidget):
     """Fila para una capa personalizada: [n complex] [espesor] [eliminar]."""
 
@@ -49,12 +52,8 @@ class _LayerItemWidget(QWidget):
         self._lbl = QLabel(f"L{index}:")
         self._lbl.setFixedWidth(25)
         self._n_input = ComplexInput("", n, re_range=(0.01, 10.0), im_range=(0.0, 10.0), step=0.01)
-        self._d_input = QDoubleSpinBox()
-        self._d_input.setRange(0.0, 5000.0)
-        self._d_input.setValue(d_nm)
-        self._d_input.setSuffix(" nm")
-        self._d_input.setDecimals(1)
-        self._d_input.setFixedWidth(90)
+        self._d_input = LayersPanel._thickness_spin(d_nm)
+        self._d_input.setFixedWidth(120)
 
         self._btn_del = QPushButton("×")
         self._btn_del.setFixedWidth(25)
@@ -123,7 +122,7 @@ class LayersPanel(QWidget):
     def _build_film(self) -> QWidget:
         w = QWidget()
         form = QFormLayout(w)
-        self._film_d = self._spin(0.0, 2000.0, 120.0, " nm", 1, 1.0)
+        self._film_d = self._thickness_spin(120.0)
         self._film_n = ComplexInput(
             "Índice n",
             1.38 + 0j,
@@ -199,7 +198,7 @@ class LayersPanel(QWidget):
         self._fp_pairs = QSpinBox()
         self._fp_pairs.setRange(1, 10)
         self._fp_pairs.setValue(3)
-        self._fp_dc = self._spin(0.0, 2000.0, 183.0, " nm", 1, 1.0)
+        self._fp_dc = self._thickness_spin(183.0)
         self._fp_wl = self._spin(100.0, 3000.0, 550.0, " nm", 1, 1.0)
         form.addRow("n espejo:", self._fp_nm)
         form.addRow("n cavidad:", self._fp_nc)
@@ -221,6 +220,14 @@ class LayersPanel(QWidget):
         s.setSuffix(suffix)
         s.setDecimals(decimals)
         s.setSingleStep(step)
+        return s
+
+    @staticmethod
+    def _thickness_spin(value: float) -> QDoubleSpinBox:
+        s = LayersPanel._spin(0.0, MAX_MANUAL_THICKNESS_NM, value, " nm", 1, 1.0)
+        s.setKeyboardTracking(False)
+        s.setAccelerated(True)
+        s.setMinimumWidth(120)
         return s
 
     # ---- emitters ----

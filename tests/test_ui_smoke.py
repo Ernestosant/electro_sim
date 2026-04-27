@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFrame, QScrollArea
 
 from electro_sim.physics_engine.sweeps import sweep_angular
@@ -10,6 +11,10 @@ from electro_sim.services.export_service import export_angular_csv
 from electro_sim.ui.main_window import MainWindow
 from electro_sim.ui.plots.base_plot import ThemedPlotWidget
 from electro_sim.ui.tabs.angular_tab import AngularTab
+
+
+LARGE_THICKNESS_NM = 12345.0
+LARGE_THICKNESS_TEXT = "12345"
 
 
 @pytest.fixture
@@ -81,6 +86,65 @@ def test_main_window_thin_film_supports_complex_index(main_window, qtbot) -> Non
     assert main_window._vm.request.layers == ()
     assert np.max(main_window._last_angular.A_TE) > 1e-6
     assert np.max(main_window._last_angular.A_TM) > 1e-6
+
+
+@pytest.mark.parametrize(
+    ("mode_data", "spinbox_name", "expected_request"),
+    [
+        ("film", "_film_d", lambda window: window._vm.request.film_thickness_nm),
+        (
+            "fp",
+            "_fp_dc",
+            lambda window: window._vm.request.layers[len(window._vm.request.layers) // 2].thickness_nm,
+        ),
+    ],
+)
+def test_layers_panel_accepts_large_manual_thickness_input(main_window, qtbot, mode_data, spinbox_name, expected_request) -> None:
+    qtbot.waitUntil(lambda: main_window._last_angular is not None, timeout=1000)
+
+    mode_index = main_window._layers._mode.findData(mode_data)
+    main_window._layers._mode.setCurrentIndex(mode_index)
+    spinbox = getattr(main_window._layers, spinbox_name)
+
+    spinbox.lineEdit().selectAll()
+    qtbot.keyClick(spinbox.lineEdit(), Qt.Key.Key_Delete)
+    qtbot.keyClicks(spinbox.lineEdit(), LARGE_THICKNESS_TEXT)
+    qtbot.keyClick(spinbox.lineEdit(), Qt.Key.Key_Enter)
+
+    qtbot.waitUntil(
+        lambda: spinbox.value() == pytest.approx(LARGE_THICKNESS_NM)
+        and expected_request(main_window) == pytest.approx(LARGE_THICKNESS_NM),
+        timeout=2000,
+    )
+
+    assert spinbox.value() == pytest.approx(LARGE_THICKNESS_NM)
+    assert expected_request(main_window) == pytest.approx(LARGE_THICKNESS_NM)
+
+
+def test_layers_panel_accepts_large_manual_thickness_for_custom_layer(main_window, qtbot) -> None:
+    qtbot.waitUntil(lambda: main_window._last_angular is not None, timeout=1000)
+
+    mode_index = main_window._layers._mode.findData("custom")
+    main_window._layers._mode.setCurrentIndex(mode_index)
+    qtbot.mouseClick(main_window._layers._btn_add, Qt.MouseButton.LeftButton)
+
+    item = main_window._layers._custom_items[0]
+    spinbox = item._d_input
+    spinbox.lineEdit().selectAll()
+    qtbot.keyClick(spinbox.lineEdit(), Qt.Key.Key_Delete)
+    qtbot.keyClicks(spinbox.lineEdit(), LARGE_THICKNESS_TEXT)
+    qtbot.keyClick(spinbox.lineEdit(), Qt.Key.Key_Enter)
+
+    qtbot.waitUntil(
+        lambda: spinbox.value() == pytest.approx(LARGE_THICKNESS_NM)
+        and len(main_window._vm.request.layers) == 1
+        and main_window._vm.request.layers[0].thickness_nm == pytest.approx(LARGE_THICKNESS_NM),
+        timeout=2000,
+    )
+
+    assert spinbox.value() == pytest.approx(LARGE_THICKNESS_NM)
+    assert len(main_window._vm.request.layers) == 1
+    assert main_window._vm.request.layers[0].thickness_nm == pytest.approx(LARGE_THICKNESS_NM)
 
 
 def test_angular_tab_uses_four_plot_layout_without_scroll(qtbot) -> None:
