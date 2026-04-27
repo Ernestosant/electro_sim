@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### UI (PyQt6 + PyQtGraph)
+- La vista Angular agrega un checkbox `Leyenda` en cada gráfica para mostrar u ocultar la leyenda sin afectar las curvas de los demás paneles.
+
+### Tests y documentación
+- README y manual de usuario actualizados para explicar el nuevo control de visibilidad de leyendas por gráfica.
+
 ## 0.1.1 — Angular-only UI
 
 ### UI (PyQt6 + PyQtGraph)

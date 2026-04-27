@@ -14,6 +14,7 @@ class ThemedPlotWidget(pg.PlotWidget):
     def __init__(self, title: str = "", parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._theme = "dark"
+        self._legend_visible = True
         self._title_text = title
         self._title_kwargs: dict[str, Any] = {"size": "10pt"}
         self._axis_labels: dict[str, dict[str, Any]] = {}
@@ -22,6 +23,11 @@ class ThemedPlotWidget(pg.PlotWidget):
         self.setBackground(PLOT_COLORS["dark"]["background"])
         self.showGrid(x=True, y=True, alpha=0.25)
         self.setTitle(title, size="10pt")
+
+    def addLegend(self, *args: Any, **kwargs: Any) -> Any:  # noqa: N802
+        legend = self.getPlotItem().addLegend(*args, **kwargs)
+        legend.setVisible(self._legend_visible)
+        return legend
 
     def setTitle(self, title: str | None = None, **kwargs) -> None:  # noqa: N802
         if title is not None:
@@ -85,7 +91,17 @@ class ThemedPlotWidget(pg.PlotWidget):
                 legend.setPen(pg.mkPen(colors["grid"]))
             for _sample, label in legend.items:
                 label.setAttr("color", colors["foreground"])
+            legend.setVisible(self._legend_visible)
         self.showGrid(x=True, y=True, alpha=0.25)
+
+    def set_legend_visible(self, visible: bool) -> None:
+        self._legend_visible = visible
+        legend = self.plotItem.legend
+        if legend is not None:
+            legend.setVisible(visible)
+
+    def legend_visible(self) -> bool:
+        return self._legend_visible
 
     def add_reference_line(
         self,

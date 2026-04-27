@@ -128,6 +128,8 @@ Cada modo expone sus parámetros específicos (espesor, n, λ de diseño, númer
 **Panel inferior:** |r| TE/TM en eje Y izquierdo; φ_r TE/TM en eje Y derecho (-180° a 180°).  
 **Marcadores verticales:** θ_B (amarillo, Brewster), θ_c (rojo, crítico), θᵢ actual (gris).
 
+Cada tarjeta de gráfica incluye un checkbox **Leyenda** en la esquina superior derecha. Si una leyenda tapa curvas, marcadores o zonas de interés, desactívala solo en ese panel; las demás gráficas no se ven afectadas.
+
 La aplicación expone una sola vista de resultados. Toda la interacción ocurre desde el **Panel de Control** y la respuesta se visualiza aquí de inmediato. El flujo actual es: editar parámetros a la izquierda, inspeccionar curvas angulares en el centro y exportar si hace falta.
 
 En estructuras lossless (interfaz simple, película o multicapa sin pérdidas), la absorptancia debe permanecer en 0 para todos los ángulos. En cambio, una capa absorbente finita debe producir una curva `A(θ)` no nula y dependiente del ángulo.
@@ -137,6 +139,7 @@ En estructuras lossless (interfaz simple, película o multicapa sin pérdidas), 
 1. Con config por defecto mové el slider θᵢ → el marcador gris se desliza.
 2. En interfaz Aire→Vidrio verás: θ_B ≈ 56.3°, R_TM = 0 allí.
 3. Invierte con Medio 1 = BK7 y Medio 2 = Air → aparece θ_c ≈ 41.8°.
+4. Si una leyenda tapa la zona de Brewster o crítico, quitá el checkbox **Leyenda** en esa gráfica para despejar la vista.
 
 ## 6. Experimentos paso a paso
 

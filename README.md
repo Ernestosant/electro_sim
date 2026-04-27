@@ -21,6 +21,7 @@ Modelos de dispersión:
 Análisis y visualización:
 
 - **Angular**: R(θ), T(θ), A(θ) = 1 - R - T (absorptancia), |r|(θ), φ_r(θ) con marcadores Brewster, crítico y ángulo actual
+- **Leyendas por gráfica**: cada panel angular puede mostrar u ocultar su leyenda desde un checkbox local cuando tapa curvas o marcadores
 - **Panel de Control persistente**: Materiales, Capas y Fuente viven en el dock izquierdo y alimentan la vista Angular en tiempo real
 - **Exportación angular**: PNG de la vista activa y CSV del último resultado angular
 
@@ -34,6 +35,7 @@ UX:
 
 - Transiciones continuas a >30 fps moviendo θᵢ (cache LRU + debouncer 80 ms)
 - Panel de Control persistente para Materiales, Capas y Fuente, recuperable desde Vista si se oculta
+- Checkbox "Leyenda" en cada gráfica angular para reducir ruido visual sin perder datos
 - Tema claro / oscuro con propagación a plots (Ctrl+D)
 - Export PNG (Ctrl+E) y CSV (Ctrl+Shift+E) del resultado angular actual
 

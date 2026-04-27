@@ -8,7 +8,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from electro_sim.physics_engine.types import AngularResult
 from electro_sim.ui.plots.base_plot import ThemedPlotWidget
@@ -30,6 +30,7 @@ class AngularPlot(QWidget):
         self._theme = "dark"
         self._last_result: Optional[AngularResult] = None
         self._plot_cards: list[QFrame] = []
+        self._legend_checkboxes: list[QCheckBox] = []
 
         # --- Panel de información (Ángulos) ---
         self._info_layout = QHBoxLayout()
@@ -163,9 +164,21 @@ class AngularPlot(QWidget):
 
         inner = QVBoxLayout(card)
         inner.setContentsMargins(10, 10, 12, 10)
-        inner.setSpacing(0)
+        inner.setSpacing(6)
+
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.addStretch()
+
+        legend_checkbox = QCheckBox("Leyenda", card)
+        legend_checkbox.setChecked(plot.legend_visible())
+        legend_checkbox.toggled.connect(lambda checked, plot_widget=plot: plot_widget.set_legend_visible(checked))
+        header.addWidget(legend_checkbox)
+
+        inner.addLayout(header)
         inner.addWidget(plot)
 
+        self._legend_checkboxes.append(legend_checkbox)
         self._plot_cards.append(card)
         return card
 
