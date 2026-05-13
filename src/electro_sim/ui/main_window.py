@@ -159,7 +159,7 @@ class MainWindow(QMainWindow):
         act_csv.setShortcut("Ctrl+Shift+E")
         act_csv.triggered.connect(self._export_csv)
         menu_export.addAction(act_csv)
-        act_tmm_csv = QAction("Diagnostico TMM (3 CSV)", self)
+        act_tmm_csv = QAction("Diagnóstico TMM (3 CSV)", self)
         act_tmm_csv.setShortcut("Ctrl+Alt+E")
         act_tmm_csv.triggered.connect(self._export_tmm_csv)
         menu_export.addAction(act_tmm_csv)
@@ -246,10 +246,18 @@ class MainWindow(QMainWindow):
         path = export_service.ask_save_path(self, "electro_sim_tmm.csv", "CSV (*.csv)")
         if path is None:
             return
-        trace = trace_tmm(self._vm.request)
-        paths = export_service.export_tmm_trace_csv(trace, path)
+        try:
+            trace = trace_tmm(self._vm.request)
+            paths = export_service.export_tmm_trace_csv(trace, path)
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Exportar diagnóstico TMM",
+                f"No se pudo exportar el diagnóstico TMM:\n{exc}",
+            )
+            return
         self.statusBar().showMessage(
-            "Diagnostico TMM exportado: "
+            "Diagnóstico TMM exportado: "
             f"{paths['global']}, {paths['interfaces']}, {paths['matrices']}",
             8000,
         )

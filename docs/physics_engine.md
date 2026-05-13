@@ -87,10 +87,10 @@ Conceptos clave:
 Este módulo es ideal para mostrar cómo una teoría aparentemente pesada se vuelve una
 operación repetitiva sobre matrices 2x2.
 
-La ruta de diagnostico `solve_tmm_trace_vectorized` conserva, para TE y TM, los
+La ruta de diagnóstico `solve_tmm_trace_vectorized` conserva, para TE y TM, los
 `k_z`, admitancias, coeficientes locales `r/t`, matrices locales, productos
 acumulados y matriz total. Las notas de clase derivan TE usando `q = k_z / mu`;
-la implementacion TM usa la misma estructura matricial cambiando solamente la
+la implementación TM usa la misma estructura matricial cambiando solamente la
 admitancia a `q = k_z / eps`.
 
 ### 5. Dispersión material

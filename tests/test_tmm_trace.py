@@ -3,12 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from electro_sim.physics_engine.fresnel import FresnelEngine
 from electro_sim.physics_engine.structures import build_dbr
 from electro_sim.physics_engine.sweeps import trace_tmm
-from electro_sim.physics_engine.tmm import solve_tmm_vectorized
+from electro_sim.physics_engine.tmm import solve_tmm_trace_vectorized, solve_tmm_vectorized
 from electro_sim.physics_engine.types import Layer, Medium, SimulationRequest
 from electro_sim.physics_engine.wavevector import kx_from_angle
 from electro_sim.services.export_service import export_tmm_trace_csv
@@ -93,6 +94,36 @@ def test_tmm_trace_single_layer_matches_thin_film_formula() -> None:
     assert_allclose(trace.TM.R, result["TM"]["R"], atol=1e-10)
     assert_allclose(trace.TE.T, result["TE"]["T"], atol=1e-10)
     assert_allclose(trace.TM.T, result["TM"]["T"], atol=1e-10)
+
+
+def test_tmm_trace_filters_zero_thickness_layers_before_labeling() -> None:
+    layers = (
+        Layer(eps=1.8 + 0j, mu=1.0 + 0j, thickness_nm=0.0),
+        Layer(eps=2.0 + 0j, mu=1.0 + 0j, thickness_nm=80.0),
+        Layer(eps=1.4 + 0j, mu=1.0 + 0j, thickness_nm=0.0),
+    )
+    trace = trace_tmm(_request(layers, angle_range=(0.0, 10.0, 3)))
+
+    assert trace.medium_labels == ("Air", "L1", "Glass")
+    assert trace.layer_thicknesses_nm.tolist() == [80.0]
+    assert trace.TE.interface_r.shape[0] == len(trace.medium_labels) - 1
+    assert trace.TE.matrices.shape[0] == len(trace.medium_labels) - 1
+
+
+def test_tmm_trace_rejects_invalid_polarization() -> None:
+    engine = FresnelEngine(1.0, 1.0, 2.25, 1.0, wavelength=550.0)
+    angles = np.array([0.0, 20.0])
+    kx = kx_from_angle(np.radians(angles), engine.medium1)
+
+    with pytest.raises(ValueError, match="polarization"):
+        solve_tmm_trace_vectorized(
+            kx=kx,
+            layers=engine.layers,
+            medium1=engine.medium1,
+            medium2=engine.medium2,
+            wavelength_nm=engine.wavelength,
+            polarization="unpolarized",  # type: ignore[arg-type]
+        )
 
 
 def test_tmm_trace_energy_for_lossless_dbr_and_lossy_layer() -> None:

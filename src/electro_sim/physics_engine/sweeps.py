@@ -46,7 +46,7 @@ def _film_from_request(req: SimulationRequest) -> dict | None:
 
 
 def _diagnostic_layers_from_request(req: SimulationRequest) -> list[dict]:
-    layers = _layers_from_request(req)
+    layers = [layer for layer in _layers_from_request(req) if layer["thickness"] > 0]
     if layers:
         return layers
     film = _film_from_request(req)
@@ -58,7 +58,7 @@ def _medium_label(name: str, fallback: str) -> str:
 
 
 def trace_tmm(req: SimulationRequest) -> TMMTrace:
-    """Calcula la traza TMM completa bajo demanda para diagnostico/export."""
+    """Calcula la traza TMM completa bajo demanda para diagnóstico/export."""
     a_min, a_max, a_n = req.angle_range_deg
     angles = np.linspace(a_min, a_max, a_n)
     theta = np.radians(angles)
@@ -92,8 +92,8 @@ def trace_tmm(req: SimulationRequest) -> TMMTrace:
     )
 
     if req.layers:
-        layer_labels = tuple(f"L{i}" for i in range(1, len(req.layers) + 1))
-    elif req.film_thickness_nm > 0:
+        layer_labels = tuple(f"L{i}" for i in range(1, len(engine.layers) + 1))
+    elif engine.layers:
         layer_labels = ("Film",)
     else:
         layer_labels = ()

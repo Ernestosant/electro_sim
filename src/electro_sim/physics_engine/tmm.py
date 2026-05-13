@@ -11,7 +11,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from electro_sim.physics_engine.constants import FLUX_EPSILON
-from electro_sim.physics_engine.types import TMMPolarizationTrace
+from electro_sim.physics_engine.types import TMMPolarization, TMMPolarizationTrace
 from electro_sim.physics_engine.wavevector import kz_from_kx, phase_from_kz
 
 
@@ -39,7 +39,9 @@ def _polarization_admittance(
     
     # Admitancia para polarización Transversal Magnética (onda p)
     # q = k_z / eps
-    return kz / medium["eps"]
+    if polarization == "TM":
+        return kz / medium["eps"]
+    raise ValueError("polarization must be 'TE' or 'TM'")
 
 
 def _power_transmittance(
@@ -156,7 +158,7 @@ def solve_tmm_trace_vectorized(
     medium1: dict[str, complex],
     medium2: dict[str, complex],
     wavelength_nm: float,
-    polarization: str,
+    polarization: TMMPolarization,
 ) -> TMMPolarizationTrace:
     """Calcula una traza auditable del TMM con la convencion de las notas de clase.
 
@@ -218,7 +220,7 @@ def solve_tmm_trace_vectorized(
     absorptance = np.maximum(0.0, 1.0 - reflectance - transmittance)
 
     return TMMPolarizationTrace(
-        polarization=polarization,  # type: ignore[arg-type]
+        polarization=polarization,
         kz=kz,
         admittance=admittance,
         interface_r=interface_r,
