@@ -7,13 +7,14 @@ facilita el manejo de los datos sin lógica compleja asociada.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal, Optional
 
 import numpy as np
 
 
 Polarization = Literal["TE", "TM", "unpolarized"]
+TMMPolarization = Literal["TE", "TM"]
 SimulationMode = Literal["angular", "spectral", "heatmap", "thickness"]
 
 
@@ -97,6 +98,43 @@ class AngularResult:
     brewster_deg: Optional[float] = None
     critical_deg: Optional[float] = None
     compute_ms: float = 0.0
+
+
+@dataclass
+class TMMPolarizationTrace:
+    """Traza auditable del TMM para una polarizacion.
+
+    Shapes:
+        kz, admittance: (N_media, N_angles)
+        interface_r, interface_t: (N_interfaces, N_angles)
+        matrices, cumulative_matrices: (N_interfaces, 2, 2, N_angles)
+        total_matrix: (2, 2, N_angles)
+        r, t, R, T, A: (N_angles,)
+    """
+    polarization: TMMPolarization
+    kz: np.ndarray
+    admittance: np.ndarray
+    interface_r: np.ndarray
+    interface_t: np.ndarray
+    matrices: np.ndarray
+    cumulative_matrices: np.ndarray
+    total_matrix: np.ndarray
+    r: np.ndarray
+    t: np.ndarray
+    R: np.ndarray
+    T: np.ndarray
+    A: np.ndarray
+
+
+@dataclass
+class TMMTrace:
+    """Resultado completo de diagnostico TMM para TE y TM."""
+    angles_deg: np.ndarray
+    wavelength_nm: float
+    medium_labels: tuple[str, ...]
+    layer_thicknesses_nm: np.ndarray
+    TE: TMMPolarizationTrace
+    TM: TMMPolarizationTrace
 
 
 @dataclass

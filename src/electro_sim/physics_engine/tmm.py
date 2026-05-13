@@ -10,6 +10,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
+from electro_sim.physics_engine.constants import FLUX_EPSILON
+from electro_sim.physics_engine.types import TMMPolarizationTrace
 from electro_sim.physics_engine.wavevector import kz_from_kx, phase_from_kz
 
 
@@ -38,6 +40,29 @@ def _polarization_admittance(
     # Admitancia para polarización Transversal Magnética (onda p)
     # q = k_z / eps
     return kz / medium["eps"]
+
+
+def _power_transmittance(
+    q_incident: NDArray[np.complex128],
+    q_transmitted: NDArray[np.complex128],
+    t_value: NDArray[np.complex128],
+) -> NDArray[np.float64]:
+    incident_flux = np.real(q_incident)
+    transmitted_flux = np.real(q_transmitted)
+    safe_incident = np.where(np.abs(incident_flux) < FLUX_EPSILON, 1.0, incident_flux)
+    power_t = np.where(
+        np.abs(incident_flux) < FLUX_EPSILON,
+        0.0,
+        (transmitted_flux / safe_incident) * np.abs(t_value) ** 2,
+    )
+    return np.maximum(0.0, np.real(power_t))
+
+
+def _identity_stack(n_angles: int) -> NDArray[np.complex128]:
+    matrix = np.zeros((2, 2, n_angles), dtype=complex)
+    matrix[0, 0] = 1.0
+    matrix[1, 1] = 1.0
+    return matrix
 
 
 def solve_tmm_vectorized(
@@ -123,3 +148,87 @@ def solve_tmm_vectorized(
     t = 2 * q_inc / denom
 
     return r, t, q_inc, q_sub
+
+
+def solve_tmm_trace_vectorized(
+    kx: NDArray[np.complex128],
+    layers: list[dict],
+    medium1: dict[str, complex],
+    medium2: dict[str, complex],
+    wavelength_nm: float,
+    polarization: str,
+) -> TMMPolarizationTrace:
+    """Calcula una traza auditable del TMM con la convencion de las notas de clase.
+
+    A diferencia de `solve_tmm_vectorized`, esta ruta conserva cada matriz local,
+    cada producto acumulado y los coeficientes locales de Fresnel. Usa la misma
+    admitancia general para ambas polarizaciones:
+
+    - TE: q = kz / mu
+    - TM: q = kz / eps
+
+    Las matrices locales siguen:
+
+        M_n = 1/t_n [[exp(-i delta_n), r_n exp(-i delta_n)],
+                     [r_n exp(+i delta_n), exp(+i delta_n)]]
+
+    con delta_0 = 0 en el medio incidente y delta_i correspondiente al espesor
+    de la capa izquierda de la interfaz i.
+    """
+    media = [medium1, *layers, medium2]
+    thicknesses = [0.0, *[float(layer["thickness"]) for layer in layers]]
+    n_angles = kx.shape[0]
+    n_media = len(media)
+    n_interfaces = n_media - 1
+
+    kz = np.empty((n_media, n_angles), dtype=complex)
+    admittance = np.empty((n_media, n_angles), dtype=complex)
+    for idx, medium in enumerate(media):
+        kz[idx] = kz_from_kx(medium, kx)
+        admittance[idx] = _polarization_admittance(medium, kz[idx], polarization)
+
+    q_left = admittance[:-1]
+    q_right = admittance[1:]
+    denominator = q_left + q_right
+    interface_r = (q_left - q_right) / denominator
+    interface_t = (2 * q_left) / denominator
+
+    matrices = np.empty((n_interfaces, 2, 2, n_angles), dtype=complex)
+    cumulative = np.empty_like(matrices)
+    total = _identity_stack(n_angles)
+
+    for idx in range(n_interfaces):
+        delta = phase_from_kz(kz[idx], thicknesses[idx], wavelength_nm)
+        exp_minus = np.exp(-1j * delta)
+        exp_plus = np.exp(1j * delta)
+
+        local = matrices[idx]
+        local[0, 0] = exp_minus / interface_t[idx]
+        local[0, 1] = interface_r[idx] * exp_minus / interface_t[idx]
+        local[1, 0] = interface_r[idx] * exp_plus / interface_t[idx]
+        local[1, 1] = exp_plus / interface_t[idx]
+
+        total = np.einsum("ijn,jkn->ikn", total, local)
+        cumulative[idx] = total
+
+    r = total[1, 0] / total[0, 0]
+    t = 1.0 / total[0, 0]
+    reflectance = np.abs(r) ** 2
+    transmittance = _power_transmittance(admittance[0], admittance[-1], t)
+    absorptance = np.maximum(0.0, 1.0 - reflectance - transmittance)
+
+    return TMMPolarizationTrace(
+        polarization=polarization,  # type: ignore[arg-type]
+        kz=kz,
+        admittance=admittance,
+        interface_r=interface_r,
+        interface_t=interface_t,
+        matrices=matrices,
+        cumulative_matrices=cumulative,
+        total_matrix=total,
+        r=r,
+        t=t,
+        R=reflectance,
+        T=transmittance,
+        A=absorptance,
+    )

@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QScrollArea,
     QStatusBar,
     QTabWidget,
@@ -14,6 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from electro_sim.physics_engine.sweeps import trace_tmm
 from electro_sim.physics_engine.types import AngularResult
 from electro_sim.services import export_service
 from electro_sim.services.simulation_service import SimulationService
@@ -157,6 +159,10 @@ class MainWindow(QMainWindow):
         act_csv.setShortcut("Ctrl+Shift+E")
         act_csv.triggered.connect(self._export_csv)
         menu_export.addAction(act_csv)
+        act_tmm_csv = QAction("Diagnostico TMM (3 CSV)", self)
+        act_tmm_csv.setShortcut("Ctrl+Alt+E")
+        act_tmm_csv.triggered.connect(self._export_tmm_csv)
+        menu_export.addAction(act_tmm_csv)
 
         menu_help = self.menuBar().addMenu("A&yuda")
         act_about = QAction("&Acerca de", self)
@@ -228,7 +234,6 @@ class MainWindow(QMainWindow):
         result = self._last_angular if title == "Angular" else None
         writer = export_service.export_angular_csv if title == "Angular" else None
         if result is None or writer is None:
-            from PyQt6.QtWidgets import QMessageBox
             QMessageBox.information(self, "Exportar CSV", "No hay datos disponibles en esta pestaña.")
             return
         name = title.replace(" ", "_").lower()
@@ -236,6 +241,18 @@ class MainWindow(QMainWindow):
         if path is None:
             return
         writer(result, path)
+
+    def _export_tmm_csv(self) -> None:
+        path = export_service.ask_save_path(self, "electro_sim_tmm.csv", "CSV (*.csv)")
+        if path is None:
+            return
+        trace = trace_tmm(self._vm.request)
+        paths = export_service.export_tmm_trace_csv(trace, path)
+        self.statusBar().showMessage(
+            "Diagnostico TMM exportado: "
+            f"{paths['global']}, {paths['interfaces']}, {paths['matrices']}",
+            8000,
+        )
 
     def _toggle_theme(self) -> None:
         self._theme = "light" if self._theme == "dark" else "dark"
@@ -255,7 +272,6 @@ class MainWindow(QMainWindow):
         self._service.request_now(self._vm.request, self._vm.dispersive_sources)
 
     def _show_about(self) -> None:
-        from PyQt6.QtWidgets import QMessageBox
         QMessageBox.about(
             self,
             "Acerca de electro_sim",

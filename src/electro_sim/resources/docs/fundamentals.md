@@ -108,6 +108,12 @@ La matriz total M = Π Mⱼ da:
 
 **Archivo:** `physics_engine/tmm.py::solve_tmm_vectorized`.
 
+Para auditoria docente tambien existe `solve_tmm_trace_vectorized`, que implementa
+la matriz de transferencia de interfaz/capa de las notas de clase y guarda todas
+las matrices locales, productos acumulados y coeficientes locales. Las notas
+desarrollan TE; TM se obtiene con la misma matriz reemplazando la admitancia por
+`q = k_z / eps` en lugar de `q = k_z / mu`.
+
 ## 6. Modelos de dispersión ε(λ)
 
 ### 6.1 Sellmeier (dieléctricos transparentes)

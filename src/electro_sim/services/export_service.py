@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import csv
+from pathlib import Path
+
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.exporters  # noqa: F401 - registra exporters
@@ -12,6 +15,7 @@ from electro_sim.physics_engine.types import (
     HeatmapResult,
     SpectralResult,
     ThicknessResult,
+    TMMTrace,
 )
 
 
@@ -76,6 +80,118 @@ def export_thickness_csv(result: ThicknessResult, path: str) -> None:
         result.T_TE, result.T_TM, result.T_unpol,
     ])
     np.savetxt(path, data, delimiter=",", header=header, comments="")
+
+
+def _complex_header(prefix: str) -> list[str]:
+    return [f"{prefix}_re", f"{prefix}_im"]
+
+
+def _complex_values(value: complex) -> list[float]:
+    return [float(np.real(value)), float(np.imag(value))]
+
+
+def _tmm_output_paths(path: str) -> dict[str, str]:
+    base = Path(path)
+    suffix = base.suffix or ".csv"
+    return {
+        "global": str(base.with_name(f"{base.stem}_global{suffix}")),
+        "interfaces": str(base.with_name(f"{base.stem}_interfaces{suffix}")),
+        "matrices": str(base.with_name(f"{base.stem}_matrices{suffix}")),
+    }
+
+
+def export_tmm_trace_csv(trace: TMMTrace, path: str) -> dict[str, str]:
+    """Exporta la traza TMM en tres CSV: global, interfaces y matrices."""
+    paths = _tmm_output_paths(path)
+
+    global_header = [
+        "angle_deg", "polarization", "wavelength_nm",
+        *_complex_header("M11"), *_complex_header("M12"),
+        *_complex_header("M21"), *_complex_header("M22"),
+        *_complex_header("r"), *_complex_header("t"),
+        "R", "T", "A",
+    ]
+    with open(paths["global"], "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(global_header)
+        for pol_trace in (trace.TE, trace.TM):
+            for angle_idx, angle in enumerate(trace.angles_deg):
+                total = pol_trace.total_matrix[:, :, angle_idx]
+                writer.writerow([
+                    float(angle),
+                    pol_trace.polarization,
+                    trace.wavelength_nm,
+                    *_complex_values(total[0, 0]),
+                    *_complex_values(total[0, 1]),
+                    *_complex_values(total[1, 0]),
+                    *_complex_values(total[1, 1]),
+                    *_complex_values(pol_trace.r[angle_idx]),
+                    *_complex_values(pol_trace.t[angle_idx]),
+                    float(pol_trace.R[angle_idx]),
+                    float(pol_trace.T[angle_idx]),
+                    float(pol_trace.A[angle_idx]),
+                ])
+
+    interface_header = [
+        "angle_deg", "polarization", "interface_index",
+        "medium_left", "medium_right",
+        *_complex_header("kz_left"), *_complex_header("kz_right"),
+        *_complex_header("q_left"), *_complex_header("q_right"),
+        *_complex_header("r_local"), *_complex_header("t_local"),
+    ]
+    with open(paths["interfaces"], "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(interface_header)
+        for pol_trace in (trace.TE, trace.TM):
+            for interface_idx in range(pol_trace.interface_r.shape[0]):
+                for angle_idx, angle in enumerate(trace.angles_deg):
+                    writer.writerow([
+                        float(angle),
+                        pol_trace.polarization,
+                        interface_idx,
+                        trace.medium_labels[interface_idx],
+                        trace.medium_labels[interface_idx + 1],
+                        *_complex_values(pol_trace.kz[interface_idx, angle_idx]),
+                        *_complex_values(pol_trace.kz[interface_idx + 1, angle_idx]),
+                        *_complex_values(pol_trace.admittance[interface_idx, angle_idx]),
+                        *_complex_values(pol_trace.admittance[interface_idx + 1, angle_idx]),
+                        *_complex_values(pol_trace.interface_r[interface_idx, angle_idx]),
+                        *_complex_values(pol_trace.interface_t[interface_idx, angle_idx]),
+                    ])
+
+    matrix_header = [
+        "angle_deg", "polarization", "matrix_index",
+        "medium_left", "medium_right",
+        *_complex_header("local_M11"), *_complex_header("local_M12"),
+        *_complex_header("local_M21"), *_complex_header("local_M22"),
+        *_complex_header("cumulative_M11"), *_complex_header("cumulative_M12"),
+        *_complex_header("cumulative_M21"), *_complex_header("cumulative_M22"),
+    ]
+    with open(paths["matrices"], "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(matrix_header)
+        for pol_trace in (trace.TE, trace.TM):
+            for matrix_idx in range(pol_trace.matrices.shape[0]):
+                for angle_idx, angle in enumerate(trace.angles_deg):
+                    local = pol_trace.matrices[matrix_idx, :, :, angle_idx]
+                    cumulative = pol_trace.cumulative_matrices[matrix_idx, :, :, angle_idx]
+                    writer.writerow([
+                        float(angle),
+                        pol_trace.polarization,
+                        matrix_idx,
+                        trace.medium_labels[matrix_idx],
+                        trace.medium_labels[matrix_idx + 1],
+                        *_complex_values(local[0, 0]),
+                        *_complex_values(local[0, 1]),
+                        *_complex_values(local[1, 0]),
+                        *_complex_values(local[1, 1]),
+                        *_complex_values(cumulative[0, 0]),
+                        *_complex_values(cumulative[0, 1]),
+                        *_complex_values(cumulative[1, 0]),
+                        *_complex_values(cumulative[1, 1]),
+                    ])
+
+    return paths
 
 
 def ask_save_path(
