@@ -8,10 +8,10 @@ from PyQt6.QtWidgets import QFrame, QScrollArea
 from electro_sim.physics_engine.sweeps import sweep_angular
 from electro_sim.physics_engine.types import AngularResult, Layer, Medium, SimulationRequest
 from electro_sim.services.export_service import export_angular_csv
+from electro_sim.ui import main_window as main_window_module
 from electro_sim.ui.main_window import MainWindow
 from electro_sim.ui.plots.base_plot import ThemedPlotWidget
 from electro_sim.ui.tabs.angular_tab import AngularTab
-
 
 LARGE_THICKNESS_NM = 12345.0
 LARGE_THICKNESS_TEXT = "12345"
@@ -226,3 +226,28 @@ def test_export_angular_csv_uses_absorptance_headers(tmp_path) -> None:
     assert "Absorptance_TE" in header
     assert "Absorptance_TM" in header
     assert "Absorptance_unpol" in header
+
+
+def test_tmm_export_failure_shows_message(main_window, qtbot, monkeypatch, tmp_path) -> None:
+    qtbot.waitUntil(lambda: main_window._last_angular is not None, timeout=1000)
+    shown: list[tuple[str, str]] = []
+
+    def fail_trace(_request):
+        raise RuntimeError("trace failed")
+
+    def capture_warning(_parent, title, message):
+        shown.append((title, message))
+
+    monkeypatch.setattr(
+        main_window_module.export_service,
+        "ask_save_path",
+        lambda *_args, **_kwargs: str(tmp_path / "trace.csv"),
+    )
+    monkeypatch.setattr(main_window_module, "trace_tmm", fail_trace)
+    monkeypatch.setattr(main_window_module.QMessageBox, "warning", capture_warning)
+
+    main_window._export_tmm_csv()
+
+    assert shown
+    assert shown[0][0] == "Exportar diagnóstico TMM"
+    assert "trace failed" in shown[0][1]

@@ -212,6 +212,7 @@ Este caso valida que el motor NO asume μ = 1 — es Fresnel generalizada con ad
 | Forzar recálculo (invalida cache) | F5 |
 | Exportar imagen de la vista (PNG) | Ctrl+E |
 | Exportar datos numéricos (CSV) | Ctrl+Shift+E |
+| Exportar diagnóstico TMM (3 CSV) | Ctrl+Alt+E |
 
 ### 7.1 Exportación
 
@@ -226,6 +227,19 @@ Serializa el último resultado angular disponible:
 | Angular | `angle_deg, R_TE, R_TM, R_unpol, T_TE, T_TM, T_unpol, Absorptance_TE, Absorptance_TM, Absorptance_unpol, abs_r_TE, abs_r_TM, phi_r_TE_deg, phi_r_TM_deg` |
 
 Si todavía no hay un cálculo angular disponible, aparece el mensaje "No hay datos disponibles en esta pestaña".
+
+**Menú Exportar → Diagnóstico TMM (3 CSV)** o `Ctrl+Alt+E`:
+Calcula bajo demanda una traza auditable por matriz de transferencia y crea tres
+archivos junto al nombre elegido:
+
+| Archivo | Contenido |
+|---|---|
+| `<base>_global.csv` | Matriz total, `r`, `t`, `R`, `T`, `A` por ángulo y polarización. |
+| `<base>_interfaces.csv` | `k_z`, admitancias y coeficientes locales `r/t` por interfaz. |
+| `<base>_matrices.csv` | Matrices locales `M_n` y productos acumulados por interfaz. |
+
+La derivación de clase está escrita para TE (`q = k_z / mu`). La exportación TMM
+incluye también TM usando la misma estructura y la admitancia `q = k_z / eps`.
 
 ## 8. Tema claro / oscuro
 

@@ -14,13 +14,16 @@ from numpy.typing import NDArray
 
 from electro_sim.physics_engine.dispersion import DispersionModel
 from electro_sim.physics_engine.fresnel import FresnelEngine
+from electro_sim.physics_engine.tmm import solve_tmm_trace_vectorized
 from electro_sim.physics_engine.types import (
     AngularResult,
     HeatmapResult,
     SimulationRequest,
     SpectralResult,
     ThicknessResult,
+    TMMTrace,
 )
+from electro_sim.physics_engine.wavevector import kx_from_angle
 
 
 def _layers_from_request(req: SimulationRequest) -> list[dict]:
@@ -40,6 +43,73 @@ def _film_from_request(req: SimulationRequest) -> dict | None:
             "thickness": float(req.film_thickness_nm),
         }
     return None
+
+
+def _diagnostic_layers_from_request(req: SimulationRequest) -> list[dict]:
+    layers = [layer for layer in _layers_from_request(req) if layer["thickness"] > 0]
+    if layers:
+        return layers
+    film = _film_from_request(req)
+    return [film] if film is not None else []
+
+
+def _medium_label(name: str, fallback: str) -> str:
+    return name if name else fallback
+
+
+def trace_tmm(req: SimulationRequest) -> TMMTrace:
+    """Calcula la traza TMM completa bajo demanda para diagnóstico/export."""
+    a_min, a_max, a_n = req.angle_range_deg
+    angles = np.linspace(a_min, a_max, a_n)
+    theta = np.radians(angles)
+
+    layers = _diagnostic_layers_from_request(req)
+    engine = FresnelEngine(
+        eps1=complex(req.medium1.eps),
+        mu1=complex(req.medium1.mu),
+        eps2=complex(req.medium2.eps),
+        mu2=complex(req.medium2.mu),
+        wavelength=float(req.wavelength_nm),
+        layers=layers,
+    )
+
+    kx = kx_from_angle(theta, engine.medium1)
+    te = solve_tmm_trace_vectorized(
+        kx=kx,
+        layers=engine.layers,
+        medium1=engine.medium1,
+        medium2=engine.medium2,
+        wavelength_nm=engine.wavelength,
+        polarization="TE",
+    )
+    tm = solve_tmm_trace_vectorized(
+        kx=kx,
+        layers=engine.layers,
+        medium1=engine.medium1,
+        medium2=engine.medium2,
+        wavelength_nm=engine.wavelength,
+        polarization="TM",
+    )
+
+    if req.layers:
+        layer_labels = tuple(f"L{i}" for i in range(1, len(engine.layers) + 1))
+    elif engine.layers:
+        layer_labels = ("Film",)
+    else:
+        layer_labels = ()
+
+    return TMMTrace(
+        angles_deg=angles,
+        wavelength_nm=float(req.wavelength_nm),
+        medium_labels=(
+            _medium_label(req.medium1.name, "Medium 1"),
+            *layer_labels,
+            _medium_label(req.medium2.name, "Medium 2"),
+        ),
+        layer_thicknesses_nm=np.asarray([layer["thickness"] for layer in engine.layers], dtype=float),
+        TE=te,
+        TM=tm,
+    )
 
 
 def sweep_angular(req: SimulationRequest) -> AngularResult:
