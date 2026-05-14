@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSpinBox,
@@ -23,9 +27,9 @@ from electro_sim.physics_engine.structures import (
     build_fabry_perot,
 )
 from electro_sim.physics_engine.types import Layer
+from electro_sim.services.layer_csv import LayerCsvError, load_layers_csv
 from electro_sim.ui.widgets.collapsible_card import CollapsibleCard
 from electro_sim.ui.widgets.complex_input import ComplexInput
-
 
 MAX_MANUAL_THICKNESS_NM = 1_000_000.0
 
@@ -89,15 +93,20 @@ class LayersPanel(QWidget):
         self._mode.addItem("Ninguna", "none")
         self._mode.addItem("Película delgada", "film")
         self._mode.addItem("Personalizado", "custom")
+        self._mode.addItem("CSV", "csv")
         self._mode.addItem("DBR", "dbr")
         self._mode.addItem("Antirreflectante λ/4", "ar")
         self._mode.addItem("Fabry-Pérot", "fp")
         self._mode.currentIndexChanged.connect(self._on_mode_changed)
 
+        self._csv_layers: list[Layer] = []
+        self._csv_path: str | None = None
+
         self._stack = QStackedWidget()
         self._stack.addWidget(self._build_none())
         self._stack.addWidget(self._build_film())
         self._stack.addWidget(self._build_custom())
+        self._stack.addWidget(self._build_csv())
         self._stack.addWidget(self._build_dbr())
         self._stack.addWidget(self._build_ar())
         self._stack.addWidget(self._build_fp())
@@ -159,6 +168,23 @@ class LayersPanel(QWidget):
         vlay.addWidget(self._btn_add)
 
         self._custom_items: list[_LayerItemWidget] = []
+        return w
+
+    def _build_csv(self) -> QWidget:
+        w = QWidget()
+        vlay = QVBoxLayout(w)
+        vlay.setContentsMargins(0, 4, 0, 4)
+        vlay.setSpacing(6)
+
+        self._csv_summary = QLabel("No hay CSV cargado.")
+        self._csv_summary.setWordWrap(True)
+        self._csv_summary.setProperty("role", "muted")
+
+        self._btn_csv_load = QPushButton("Cargar CSV...")
+        self._btn_csv_load.clicked.connect(self.import_layers_csv)
+
+        vlay.addWidget(self._csv_summary)
+        vlay.addWidget(self._btn_csv_load)
         return w
 
     def _build_dbr(self) -> QWidget:
@@ -245,12 +271,48 @@ class LayersPanel(QWidget):
             self._emit_film()
         elif mode == "custom":
             self._emit_custom()
+        elif mode == "csv":
+            self._emit_csv()
         elif mode == "dbr":
             self._emit_dbr()
         elif mode == "ar":
             self._emit_ar()
         elif mode == "fp":
             self._emit_fp()
+
+    def import_layers_csv(self, path: str | bool | None = None) -> bool:
+        if isinstance(path, bool):
+            path = None
+        if path is None:
+            path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Importar capas CSV",
+                "",
+                "CSV (*.csv);;Todos los archivos (*)",
+            )
+        if not path:
+            return False
+
+        try:
+            layers = load_layers_csv(path)
+        except LayerCsvError as exc:
+            QMessageBox.warning(
+                self,
+                "Importar capas CSV",
+                f"No se pudo cargar la configuracion de capas:\n{exc}",
+            )
+            return False
+
+        self._csv_layers = layers
+        self._csv_path = str(path)
+        self._update_csv_summary()
+
+        idx = self._mode.findData("csv")
+        if idx >= 0 and self._mode.currentIndex() != idx:
+            self._mode.setCurrentIndex(idx)
+        else:
+            self._emit_csv()
+        return True
 
     def _add_custom_layer(self) -> None:
         idx = len(self._custom_items) + 1
@@ -273,6 +335,21 @@ class LayersPanel(QWidget):
         self.film_changed.emit(0.0, 1.0 + 0j, 1.0 + 0j)
         self.layers_changed.emit(layers)
 
+    def _emit_csv(self) -> None:
+        self.film_changed.emit(0.0, 1.0 + 0j, 1.0 + 0j)
+        self.layers_changed.emit(list(self._csv_layers))
+
+    def _update_csv_summary(self) -> None:
+        if not self._csv_layers:
+            self._csv_summary.setText("No hay CSV cargado.")
+            return
+        total_thickness = sum(layer.thickness_nm for layer in self._csv_layers)
+        name = Path(self._csv_path or "").name or "CSV"
+        self._csv_summary.setText(
+            f"{name}\nCapas: {len(self._csv_layers)}   "
+            f"espesor total: {total_thickness:.3f} nm"
+        )
+
     def _emit_film(self) -> None:
         d = self._film_d.value()
         n = self._film_n.value()
@@ -288,8 +365,14 @@ class LayersPanel(QWidget):
         )
         self.film_changed.emit(0.0, 1.0 + 0j, 1.0 + 0j)
         self.layers_changed.emit(
-            [Layer(eps=complex(l["eps"]), mu=complex(l["mu"]), thickness_nm=l["thickness"])
-             for l in layers]
+            [
+                Layer(
+                    eps=complex(layer["eps"]),
+                    mu=complex(layer["mu"]),
+                    thickness_nm=layer["thickness"],
+                )
+                for layer in layers
+            ]
         )
 
     def _emit_ar(self) -> None:
@@ -299,8 +382,14 @@ class LayersPanel(QWidget):
         )
         self.film_changed.emit(0.0, 1.0 + 0j, 1.0 + 0j)
         self.layers_changed.emit(
-            [Layer(eps=complex(l["eps"]), mu=complex(l["mu"]), thickness_nm=l["thickness"])
-             for l in layers]
+            [
+                Layer(
+                    eps=complex(layer["eps"]),
+                    mu=complex(layer["mu"]),
+                    thickness_nm=layer["thickness"],
+                )
+                for layer in layers
+            ]
         )
 
     def _emit_fp(self) -> None:
@@ -313,6 +402,12 @@ class LayersPanel(QWidget):
         )
         self.film_changed.emit(0.0, 1.0 + 0j, 1.0 + 0j)
         self.layers_changed.emit(
-            [Layer(eps=complex(l["eps"]), mu=complex(l["mu"]), thickness_nm=l["thickness"])
-             for l in layers]
+            [
+                Layer(
+                    eps=complex(layer["eps"]),
+                    mu=complex(layer["mu"]),
+                    thickness_nm=layer["thickness"],
+                )
+                for layer in layers
+            ]
         )
