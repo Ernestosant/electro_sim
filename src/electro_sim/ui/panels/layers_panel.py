@@ -181,7 +181,7 @@ class LayersPanel(QWidget):
         self._csv_summary.setProperty("role", "muted")
 
         self._btn_csv_load = QPushButton("Cargar CSV...")
-        self._btn_csv_load.clicked.connect(self.import_layers_csv)
+        self._btn_csv_load.clicked.connect(lambda _checked=False: self.import_layers_csv())
 
         vlay.addWidget(self._csv_summary)
         vlay.addWidget(self._btn_csv_load)
@@ -280,9 +280,7 @@ class LayersPanel(QWidget):
         elif mode == "fp":
             self._emit_fp()
 
-    def import_layers_csv(self, path: str | bool | None = None) -> bool:
-        if isinstance(path, bool):
-            path = None
+    def import_layers_csv(self, path: str | None = None) -> bool:
         if path is None:
             path, _ = QFileDialog.getOpenFileName(
                 self,
@@ -299,7 +297,7 @@ class LayersPanel(QWidget):
             QMessageBox.warning(
                 self,
                 "Importar capas CSV",
-                f"No se pudo cargar la configuracion de capas:\n{exc}",
+                f"No se pudo cargar la configuración de capas:\n{exc}",
             )
             return False
 

@@ -50,13 +50,19 @@ def _detect_format(mapping: Mapping[str, str]) -> str:
             "Faltan columnas para el formato eps/mu: " + ", ".join(missing)
         )
     raise LayerCsvError(
-        "El CSV debe contener name,n_re,n_im,thickness_nm "
+        "El CSV debe contener n_re,n_im,thickness_nm (name opcional) "
         "o eps_re,eps_im,mu_re,mu_im,thickness_nm."
     )
 
 
 def _is_blank_row(row: Mapping[str | None, object]) -> bool:
-    return all(str(value or "").strip() == "" for value in row.values())
+    for key, val in row.items():
+        if key is None and isinstance(val, list):
+            if any(str(v or "").strip() != "" for v in val):
+                return False
+        elif str(val or "").strip() != "":
+            return False
+    return True
 
 
 def _cell(row: Mapping[str | None, object], mapping: Mapping[str, str], key: str) -> str:

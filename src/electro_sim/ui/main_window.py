@@ -124,7 +124,7 @@ class MainWindow(QMainWindow):
         menu_file = self.menuBar().addMenu("&Archivo")
         act_import_layers = QAction("Importar capas CSV...", self)
         act_import_layers.setShortcut("Ctrl+I")
-        act_import_layers.triggered.connect(self._layers.import_layers_csv)
+        act_import_layers.triggered.connect(lambda _checked=False: self._layers.import_layers_csv())
         menu_file.addAction(act_import_layers)
         menu_file.addSeparator()
         act_quit = QAction("&Salir", self)
