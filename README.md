@@ -10,7 +10,7 @@ Motor Fresnel vectorizado con NumPy:
 - ε, μ complejos (medios con pérdidas y magnéticos)
 - Ángulo de Brewster y ángulo crítico (TIR)
 - Película delgada (interferencia multi-onda)
-- Multicapas por Transfer Matrix Method (hasta 30 capas)
+- Multicapas por Transfer Matrix Method, con presets y carga CSV para pilas largas
 - Presets: DBR, antirreflectante λ/4, Fabry-Pérot, custom
 
 Modelos de dispersión:
@@ -23,6 +23,7 @@ Análisis y visualización:
 - **Angular**: R(θ), T(θ), A(θ) = 1 - R - T (absorptancia), |r|(θ), φ_r(θ) con marcadores Brewster, crítico y ángulo actual
 - **Leyendas por gráfica**: cada panel angular puede mostrar u ocultar su leyenda desde un checkbox local cuando tapa curvas o marcadores
 - **Panel de Control persistente**: Materiales, Capas y Fuente viven en el dock izquierdo y alimentan la vista Angular en tiempo real
+- **Importación de multicapas CSV**: `Archivo -> Importar capas CSV...` (`Ctrl+I`) o modo `CSV` del panel Capas
 - **Exportación angular y TMM**: PNG de la vista activa, CSV angular y diagnóstico TMM en 3 CSV (`global`, `interfaces`, `matrices`)
 
 Entrada de materiales con **3 modos**:
@@ -36,8 +37,9 @@ UX:
 - Transiciones continuas a >30 fps moviendo θᵢ (cache LRU + debouncer 80 ms)
 - Panel de Control persistente para Materiales, Capas y Fuente, recuperable desde Vista si se oculta
 - Checkbox "Leyenda" en cada gráfica angular para reducir ruido visual sin perder datos
+- Carga CSV de pilas multicapa con formato `name,n_re,n_im,thickness_nm`; el repo incluye `examples/multilayer_100_layers.csv`
 - Tema claro / oscuro con propagación a plots (Ctrl+D)
-- Export PNG (Ctrl+E), CSV angular (Ctrl+Shift+E) y CSV de diagnóstico TMM (Ctrl+Alt+E)
+- Import CSV (Ctrl+I), export PNG (Ctrl+E), CSV angular (Ctrl+Shift+E) y CSV de diagnóstico TMM (Ctrl+Alt+E)
 
 ## Requisitos
 
@@ -107,6 +109,7 @@ Para el flujo real de señales, estado y cómputo, consulta `docs/architecture.m
 - `docs/development.md` — entorno local, estrategia de pruebas y reglas de mantenimiento.
 - `docs/physics_engine.md` — mapa docente del motor físico para clases y auditoría del código.
 - `src/electro_sim/resources/docs/fundamentals.md` — teoría de referencia (Maxwell → Fresnel → TMM → dispersión → elipsometría) conservada en el repositorio.
+- `examples/multilayer_100_layers.csv` — pila CSV de 100 capas distintas para probar importación y conservación de energía.
 
 ## Licencia
 

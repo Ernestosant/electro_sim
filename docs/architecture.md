@@ -67,6 +67,7 @@ El ViewModel NO debe:
 Archivo principal:
 
 - `src/electro_sim/services/simulation_service.py`
+- `src/electro_sim/services/layer_csv.py`
 
 Responsabilidad:
 
@@ -75,6 +76,7 @@ Responsabilidad:
 - Consultar y actualizar la cache LRU.
 - Elegir el barrido correcto según `req.mode`.
 - Emitir el resultado ya resuelto (`AngularResult`, `SpectralResult`, etc.).
+- Convertir entradas externas de aplicación, como CSV de capas, en tipos del dominio antes de tocar el ViewModel.
 
 Puntos clave del diseño actual:
 
@@ -88,6 +90,7 @@ El servicio NO debe:
 - Conocer detalles de widgets concretos.
 - Duplicar fórmulas del motor.
 - Convertirse en un segundo ViewModel con estado de presentación.
+- Introducir I/O dentro de `physics_engine/`; los importadores viven aquí o en una capa superior.
 
 ### 4. physics_engine
 
@@ -130,6 +133,8 @@ Regla estructural más importante del proyecto:
 10. `SimulationVM` reenvía el resultado a la UI.
 11. `AngularTab` actualiza curvas, marcadores y ejes.
 12. `MainWindow` actualiza barra de estado, tiempo de cómputo, cache hit ratio y chequeo energético.
+
+Para CSV multicapa, el diálogo de archivo se queda en la UI, `layer_csv.py` valida y devuelve `list[Layer]`, y `LayersPanel` emite `layers_changed` igual que los modos manuales y presets.
 
 ## Puntos de entrada importantes
 

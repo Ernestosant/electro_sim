@@ -120,6 +120,8 @@ Conceptos clave:
 
 Este módulo traduce reglas de diseño óptico en listas de capas concretas para el motor.
 
+La carga CSV de pilas arbitrarias no vive aquí: `services/layer_csv.py` hace el I/O y entrega `Layer` al flujo normal. Así el motor sigue siendo NumPy puro y testeable sin archivos ni Qt.
+
 ### 7. Barridos numéricos
 
 Archivo:

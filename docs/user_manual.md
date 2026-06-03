@@ -21,7 +21,8 @@
    5. [Antirreflectante λ/4](#65-antirreflectante-λ4)
    6. [DBR (espejo Bragg)](#66-dbr-espejo-bragg)
    7. [Material magnético](#67-material-magnético)
-   8. [Exportar gráfico y CSV](#68-exportar-gráfico-y-csv)
+   8. [Importar multicapa CSV](#68-importar-multicapa-csv)
+   9. [Exportar gráfico y CSV](#69-exportar-gráfico-y-csv)
 7. [Atajos de teclado](#7-atajos-de-teclado)
 8. [Tema claro / oscuro](#8-tema-claro--oscuro)
 9. [Estructura del código y auditoría física](#9-estructura-del-código-y-auditoría-física)
@@ -36,7 +37,7 @@
 - Coeficientes de reflexión y transmisión (amplitud y fase) para polarizaciones TE y TM.
 - Medios con ε y μ complejos (dieléctricos, metales, magnéticos, absorbentes).
 - Películas delgadas con interferencia multi-onda.
-- Multicapas por Transfer Matrix Method (hasta 30 capas).
+- Multicapas por Transfer Matrix Method, con presets y carga CSV para pilas largas.
 - Modelos de dispersión cromática (Sellmeier, Cauchy, Drude, Drude-Lorentz) para 10 materiales preset.
 
 La UI es nativa en PyQt6 y los plots usan PyQtGraph para actualización en tiempo real (objetivo ≥ 30 fps, cache LRU para re-visitar parámetros).
@@ -103,15 +104,25 @@ Debajo de cada bloque verás un resumen `n = … , ε = … , μ = …` en tiemp
 
 ### 4.2 Capas / Película
 
-Dropdown con 5 modos:
+Dropdown con 6 modos:
 
 - **Ninguna** — interfaz única (sin capas intermedias).
 - **Película delgada** — una capa con espesor d y n; usa fórmula cerrada con β = 2π n d cos θ / λ.
+- **CSV** — carga una pila multicapa desde un archivo externo.
 - **DBR** — N pares de capas λ/4 alternadas entre n_H y n_L (espejo Bragg).
 - **Antirreflectante λ/4** — capa única con n óptimo = √(n₁·n₂) para R→0 en λ de diseño.
 - **Fabry-Pérot** — DBR + cavidad + DBR; produce pico de transmitancia estrecho.
 
 Cada modo expone sus parámetros específicos (espesor, n, λ de diseño, número de pares).
+
+El modo **CSV** acepta dos encabezados:
+
+| Formato | Columnas |
+|---|---|
+| Índice complejo | `name,n_re,n_im,thickness_nm` (`name` opcional) |
+| ε/μ directo | `eps_re,eps_im,mu_re,mu_im,thickness_nm` |
+
+En el formato por índice se usa `n = n_re + i n_im`, `ε = n²`, `μ = 1`; `n_im` debe ser `>= 0` y `thickness_nm` debe ser `> 0`. El archivo describe solo las capas internas: los medios incidente y transmitido siguen configurándose en **Materiales**.
 
 ### 4.3 Fuente (λ, θ, polarización)
 
@@ -196,11 +207,19 @@ En estructuras lossless (interfaz simple, película o multicapa sin pérdidas), 
 
 Este caso valida que el motor NO asume μ = 1 — es Fresnel generalizada con admitancia.
 
-### 6.8 Exportar gráfico y CSV
+### 6.8 Importar multicapa CSV
+
+1. **Materiales**: deja Medio 1 = Air y Medio 2 = BK7/vidrio.
+2. **Archivo → Importar capas CSV...** (`Ctrl+I`) o **Capas / Película → CSV → Cargar CSV...**.
+3. Selecciona `examples/multilayer_100_layers.csv`.
+4. **Esperado**: el resumen del panel indica 100 capas y la curva de absorptancia es positiva, porque todas las capas tienen absorción débil.
+5. En la barra de estado debe mantenerse `R+T+A ≈ 1`; la suite automatizada verifica el ejemplo con error menor que `1e-9`.
+
+### 6.9 Exportar gráfico y CSV
 
 1. Terminá cualquier experimento anterior (ej. Brewster con preset `Gold`).
 2. **Ctrl+E** → guardá PNG de la vista Angular activa.
-3. **Ctrl+Shift+E** → guardá CSV del resultado numérico. Abrilo en Excel/Python y verificá que las columnas coincidan con la tabla en la [sección 7.1](#71-exportación).
+3. **Ctrl+Shift+E** → guardá CSV del resultado numérico. Abrilo en Excel/Python y verificá que las columnas coincidan con la tabla en la [sección 7.1](#71-importación-y-exportación).
 
 ## 7. Atajos de teclado
 
@@ -210,11 +229,15 @@ Este caso valida que el motor NO asume μ = 1 — es Fresnel generalizada con ad
 | Alternar tema claro/oscuro | Ctrl+D |
 | Ir a Angular | Ctrl+1 |
 | Forzar recálculo (invalida cache) | F5 |
+| Importar capas multicapa (CSV) | Ctrl+I |
 | Exportar imagen de la vista (PNG) | Ctrl+E |
 | Exportar datos numéricos (CSV) | Ctrl+Shift+E |
 | Exportar diagnóstico TMM (3 CSV) | Ctrl+Alt+E |
 
-### 7.1 Exportación
+### 7.1 Importación y exportación
+
+**Menú Archivo → Importar capas CSV...** o `Ctrl+I`:
+Carga una pila multicapa desde CSV, cambia el panel Capas a modo `CSV` y recalcula la vista Angular. Si el archivo tiene columnas faltantes o valores no físicos, aparece un aviso con fila/columna y se conserva la configuración anterior.
 
 **Menú Exportar → Imagen de la pestaña (PNG)** o `Ctrl+E`:
 Captura la vista Angular activa como PNG (usa `QWidget.grab()`). Abre diálogo de guardar con nombre sugerido `electro_sim_angular.png`.

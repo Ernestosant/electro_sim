@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 from PyQt6.QtCore import Qt
@@ -10,11 +12,13 @@ from electro_sim.physics_engine.types import AngularResult, Layer, Medium, Simul
 from electro_sim.services.export_service import export_angular_csv
 from electro_sim.ui import main_window as main_window_module
 from electro_sim.ui.main_window import MainWindow
+from electro_sim.ui.panels import layers_panel as layers_panel_module
 from electro_sim.ui.plots.base_plot import ThemedPlotWidget
 from electro_sim.ui.tabs.angular_tab import AngularTab
 
 LARGE_THICKNESS_NM = 12345.0
 LARGE_THICKNESS_TEXT = "12345"
+EXAMPLE_CSV = Path(__file__).resolve().parents[1] / "examples" / "multilayer_100_layers.csv"
 
 
 @pytest.fixture
@@ -145,6 +149,31 @@ def test_layers_panel_accepts_large_manual_thickness_for_custom_layer(main_windo
     assert spinbox.value() == pytest.approx(LARGE_THICKNESS_NM)
     assert len(main_window._vm.request.layers) == 1
     assert main_window._vm.request.layers[0].thickness_nm == pytest.approx(LARGE_THICKNESS_NM)
+
+
+def test_layers_panel_imports_100_layer_csv_from_file_dialog(main_window, qtbot, monkeypatch) -> None:
+    qtbot.waitUntil(lambda: main_window._last_angular is not None, timeout=1000)
+
+    monkeypatch.setattr(
+        layers_panel_module.QFileDialog,
+        "getOpenFileName",
+        lambda *_args, **_kwargs: (str(EXAMPLE_CSV), "CSV (*.csv)"),
+    )
+
+    assert main_window._layers.import_layers_csv()
+
+    qtbot.waitUntil(
+        lambda: len(main_window._vm.request.layers) == 100
+        and main_window._last_angular is not None
+        and np.max(main_window._last_angular.A_unpol) > 1e-6
+        and main_window._layers._mode.currentData() == "csv",
+        timeout=3000,
+    )
+
+    assert len(main_window._vm.request.layers) == 100
+    assert main_window._vm.request.film_thickness_nm == pytest.approx(0.0)
+    assert "multilayer_100_layers.csv" in main_window._layers._csv_summary.text()
+    assert np.max(main_window._last_angular.A_unpol) > 1e-6
 
 
 def test_angular_tab_uses_four_plot_layout_without_scroll(qtbot) -> None:

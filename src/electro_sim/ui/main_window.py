@@ -122,6 +122,11 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self) -> None:
         menu_file = self.menuBar().addMenu("&Archivo")
+        act_import_layers = QAction("Importar capas CSV...", self)
+        act_import_layers.setShortcut("Ctrl+I")
+        act_import_layers.triggered.connect(lambda _checked=False: self._layers.import_layers_csv())
+        menu_file.addAction(act_import_layers)
+        menu_file.addSeparator()
         act_quit = QAction("&Salir", self)
         act_quit.setShortcut(QKeySequence.StandardKey.Quit)
         act_quit.triggered.connect(self.close)
@@ -298,7 +303,7 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geom)
         if state := settings.value("window_state"):
             self.restoreState(state)
-            
+
         # Forzar que el panel de control siempre sea visible al iniciar
         if self._control_dock and not self._control_dock.isVisible():
             self._control_dock.setVisible(True)

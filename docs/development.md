@@ -47,6 +47,7 @@ electro-sim
 
 - Vive en `src/electro_sim/services/`.
 - Decide cuándo recalcular, cuándo usar cache y qué barrido ejecutar.
+- También contiene I/O de aplicación que no pertenece al motor, como `layer_csv.py` para convertir archivos CSV de capas a `Layer`.
 
 ### Estado de aplicación
 
@@ -105,6 +106,7 @@ pytest --cov=electro_sim --cov-report=html
 
 - Verificar manualmente el flujo de request y respuesta.
 - Revisar el impacto en cache, debounce y señales.
+- Para importadores CSV, probar parser puro con archivos temporales y al menos un smoke test de UI con `QFileDialog` simulado.
 
 ### Si cambias `ui/`
 
@@ -157,6 +159,12 @@ El estándar interno a imitar es el de:
 1. Crear el builder en `physics_engine/structures.py`.
 2. Documentar la condición física que usa la estructura.
 3. Añadir pruebas o ejemplos que verifiquen el comportamiento esperado.
+
+### Nueva entrada multicapa desde archivo
+
+1. Mantener el parser fuera de `physics_engine/`; usar `services/` para I/O y validación de archivo.
+2. Convertir el resultado a `Layer` antes de llegar al ViewModel.
+3. Verificar físicamente un ejemplo representativo con `R+T+A = 1` y absorptancia positiva si hay pérdidas.
 
 ## Notas de mantenimiento
 
